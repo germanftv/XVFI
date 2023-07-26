@@ -376,21 +376,21 @@ def make_2D_dataset_Custom_Test(dir, multiple):
     """ 1D (accumulated) """
     testPath = []
     t = np.linspace((1 / multiple), (1 - (1 / multiple)), (multiple - 1))
-    for scene_folder in sorted(glob.glob(os.path.join(dir, '*', ''))):  # [scene1, scene2, scene3, ...]
-        frame_folder = sorted(glob.glob(scene_folder + '*.png'))  # ex) ['00000.png',...,'00123.png']
-        for idx in range(0, len(frame_folder)):
-            if idx == len(frame_folder) - 1:
-                break
-            for suffix, mul in enumerate(range(multiple - 1)):
-                I0I1It_paths = []
-                I0I1It_paths.append(frame_folder[idx])  # I0 (fix)
-                I0I1It_paths.append(frame_folder[idx + 1])  # I1 (fix)
-                target_t_Idx = frame_folder[idx].split(os.sep)[-1].split('.')[0]+'_' + str(suffix).zfill(3) + '.png'
-                # ex) target t name: 00017.png => '00017_1.png'
-                I0I1It_paths.append(os.path.join(scene_folder, target_t_Idx))  # It
-                I0I1It_paths.append(t[mul]) # t
-                I0I1It_paths.append(frame_folder[idx].split(os.path.join(dir, ''))[-1].split(os.sep)[0])  # scene1
-                testPath.append(I0I1It_paths)
+    # for scene_folder in sorted(glob.glob(os.path.join(dir, '*', ''))):  # [scene1, scene2, scene3, ...]
+    frame_folder = sorted(glob.glob(os.path.join(dir, '') + '*.png'))  # ex) ['00000.png',...,'00123.png']
+    for idx in range(0, len(frame_folder)):
+        if idx == len(frame_folder) - 1:
+            break
+        for suffix, mul in enumerate(range(multiple - 1)):
+            I0I1It_paths = []
+            I0I1It_paths.append(frame_folder[idx])  # I0 (fix)
+            I0I1It_paths.append(frame_folder[idx + 1])  # I1 (fix)
+            target_t_Idx = frame_folder[idx].split(os.sep)[-1].split('.')[0]+'_' + str(suffix+1).zfill(3) + '.png'
+            # ex) target t name: 00017.png => '00017_1.png'
+            I0I1It_paths.append(os.path.join(dir, target_t_Idx))  # It
+            I0I1It_paths.append(t[mul]) # t
+            I0I1It_paths.append(os.path.basename(dir))  # scene1
+            testPath.append(I0I1It_paths)
     return testPath
 
 

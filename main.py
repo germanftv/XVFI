@@ -4,8 +4,8 @@ import torch.optim as optim
 import numpy as np
 
 from torch.autograd import Variable
-from utils import *
-from XVFInet import *
+from .utils import *
+from .XVFInet import *
 from collections import Counter
 
 
@@ -72,8 +72,10 @@ def parse_args():
 
     """ Settings for test_custom (when [phase=='test_custom']) """
     parser.add_argument('--custom_path', type=str, default='./custom_path', help='path for custom video containing frames')
+    parser.add_argument('--custom_output_path', type=str, default='./custom_output_path',)
 
-    return check_args(parser.parse_args())
+    args, _ = parser.parse_known_args()
+    return args
 
 
 def check_args(args):
@@ -92,8 +94,8 @@ def check_args(args):
     return args
 
 
-def main():
-    args = parse_args()
+def main(args):
+    args = check_args(args)
     if args.dataset == 'Vimeo':
         if args.phase != 'test_custom':
             args.multiple = 2
@@ -397,12 +399,23 @@ def test(test_loader, model_net, criterion, epoch, args, device, multiple, postf
                     progress.print(testIndex)
 
             else:
-                epoch_save_path = args.custom_path
-                scene_save_path = os.path.join(epoch_save_path, scene_name[0])
+                # epoch_save_path = args.custom_output_path
+                scene_save_path = args.custom_output_path
+                os.makedirs(scene_save_path, exist_ok=True)
                 pred_frameT = np.squeeze(pred_frameT.detach().cpu().numpy())
                 output_img = np.around(denorm255_np(np.transpose(pred_frameT, [1, 2, 0])))  # [h,w,c] and [-1,1] to [0,255]
                 print(os.path.join(scene_save_path, It_Path[0]))
                 cv2.imwrite(os.path.join(scene_save_path, It_Path[0]), output_img.astype(np.uint8))
+
+                if (testIndex % (multiple - 1)) == 0:
+                    save_input_frames = frames[:, :, :-1, :, :]
+                    if testIndex == 0:
+                        cv2.imwrite(os.path.join(scene_save_path, I0_Path[0].split(os.sep)[-1].split('.')[0]+'_' + str(0).zfill(3) + '.png'),
+                                    np.transpose(np.squeeze(denorm255_np(save_input_frames[:, :, 0, :, :].detach().numpy())),
+                                                [1, 2, 0]).astype(np.uint8))
+                    cv2.imwrite(os.path.join(scene_save_path, I1_Path[0].split(os.sep)[-1].split('.')[0]+'_' + str(0).zfill(3) + '.png'),
+                                np.transpose(np.squeeze(denorm255_np(save_input_frames[:, :, 1, :, :].detach().numpy())),
+                                             [1, 2, 0]).astype(np.uint8))
 
                 losses.update(0.0, 1)
                 PSNRs.update(0.0, 1)
@@ -414,4 +427,5 @@ def test(test_loader, model_net, criterion, epoch, args, device, multiple, postf
 
 
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)
