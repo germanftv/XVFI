@@ -1,8 +1,10 @@
+# ------------------------------------------------------------------------
+# Modified from XVFI (https://github.com/JihyongOh/XVFI)
+# ------------------------------------------------------------------------
 import functools, random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 import numpy as np
 
 
@@ -32,10 +34,9 @@ class XVFInet(nn.Module):
 
 		self.rec_ctx_ds = nn.Conv3d(self.nf, self.nf, [1, 3, 3], [1, 2, 2], [0, 1, 1])
 
-		print("The lowest scale depth for training (S_trn): ", self.args.S_trn)
-		print("The lowest scale depth for test (S_tst): ", self.args.S_tst)
+		print("The lowest scale depth (S_tst): ", self.args.S_tst)
 
-	def forward(self, x, t_value, is_training=True):
+	def forward(self, x, t_value):
 		'''
 		x shape : [B,C,T,H,W]
 		t_value shape : [B,1] ###############
@@ -49,30 +50,15 @@ class XVFInet(nn.Module):
 		flow_l = None 
 		feat_x = self.rec_ext_ds_module(x)
 		feat_x_list = [feat_x]
-		self.lowest_depth_level = self.args.S_trn if is_training else self.args.S_tst
+		self.lowest_depth_level = self.args.S_tst
 		for level in range(1, self.lowest_depth_level+1):
 			feat_x = self.rec_ctx_ds(feat_x)
 			feat_x_list.append(feat_x)
 
-		if is_training:
-			out_l_list = []
-			flow_refine_l_list = []
-			out_l, flow_l, flow_refine_l = self.vfinet(x, feat_x_list[self.args.S_trn], flow_l, t_value, level=self.args.S_trn, is_training=True)
-			out_l_list.append(out_l)
-			flow_refine_l_list.append(flow_refine_l)
-			for level in range(self.args.S_trn-1, 0, -1): ## self.args.S_trn, self.args.S_trn-1, ..., 1. level 0 is not included
-				out_l, flow_l = self.vfinet(x, feat_x_list[level], flow_l, t_value, level=level, is_training=True)
-				out_l_list.append(out_l)
-			out_l, flow_l, flow_refine_l, occ_0_l0 = self.vfinet(x, feat_x_list[0], flow_l, t_value, level=0, is_training=True)
-			out_l_list.append(out_l)
-			flow_refine_l_list.append(flow_refine_l)
-			return out_l_list[::-1], flow_refine_l_list[::-1], occ_0_l0, torch.mean(x, dim=2) # out_l_list should be reversed. [out_l0, out_l1, ...]
-
-		else: # Testing
-			for level in range(self.args.S_tst, 0, -1): ## self.args.S_tst, self.args.S_tst-1, ..., 1. level 0 is not included
-				flow_l = self.vfinet(x, feat_x_list[level], flow_l, t_value, level=level, is_training=False)
-			out_l = self.vfinet(x, feat_x_list[0], flow_l, t_value, level=0, is_training=False)
-			return out_l
+		for level in range(self.args.S_tst, 0, -1): ## self.args.S_tst, self.args.S_tst-1, ..., 1. level 0 is not included
+			flow_l = self.vfinet(x, feat_x_list[level], flow_l, t_value, level=level, is_training=False)
+		out_l = self.vfinet(x, feat_x_list[0], flow_l, t_value, level=0, is_training=False)
+		return out_l
 
 
 class VFInet(nn.Module):
@@ -224,15 +210,6 @@ class VFInet(nn.Module):
 
 		if not is_training and level==0: 
 			return out_l
-
-		if is_training: 
-			if flow_l_prev is None:
-			# if level == self.args.S_trn:
-				return out_l, flow_l, flow_refine_l[:, 0:4, :, :]
-			elif level != 0:
-				return out_l, flow_l
-			else: # level==0
-				return out_l, flow_l, flow_refine_l[:, 0:4, :, :], occ_0_l
 
 	def bwarp(self, x, flo):
 		'''

@@ -1,0 +1,7 @@
+XVFI_settings:
+  - pretrained: Vimeo
+    module_scale_factor: 2
+    S_tst: 1
+  - pretrained: X4K1000FPS
+    module_scale_factor: 4
+    S_tst: 5
